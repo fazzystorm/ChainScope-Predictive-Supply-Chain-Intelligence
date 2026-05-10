@@ -8,6 +8,11 @@ A high-performance visualization tool to analyze global dependency, market risks
 
 Global companies have complex dependencies. If one route closes, the entire market collapses. Existing tools are either too expensive or don't show the 'Full Picture' of a company's supply health.
 
+<img width="1912" height="859" alt="Screenshot 2026-04-03 123748" src="https://github.com/user-attachments/assets/f24269db-3328-4af4-a76d-267fc0e38544" />
+
+<img width="1912" height="859" alt="Screenshot 2026-04-03 123748" src="https://github.com/user-attachments/assets/93e3ee1b-f0a1-44b4-9ece-0f46034bfd3a" />
+
+
 
 ## Features
 
