@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainScope — Supply Chain Intelligence</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="config.js"></script>
+    <style>
+        :root {
+            --bg: #070a10;
+            --s1: #0c1118;
+            --s2: #111820;
+            --s3: #17202b;
+            --s4: #1d2936;
+            --b1: #1a2535;
+            --b2: #22334a;
+            --b3: #2d4460;
+            --blue: #38bdf8;
+            --blue-dim: rgba(56, 189, 248, 0.12);
+            --blue-glow: rgba(56, 189, 248, 0.25);
+            --red: #f87171;
+            --red-dim: rgba(248, 113, 113, 0.1);
+            --yellow: #fbbf24;
+            --yel-dim: rgba(251, 191, 36, 0.1);
+            --green: #34d399;
+            --grn-dim: rgba(52, 211, 153, 0.1);
+            --orange: #fb923c;
+            --purple: #c084fc;
+            --t1: #f0f6fc;
+            --t2: #94a3b8;
+            --t3: #4a6280;
+            --t4: #2a3d52;
+            --nav-h: 52px;
+            --cbar-h: 42px;
+            --sb-w: 304px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+            --glow-b: 0 0 16px rgba(56, 189, 248, 0.2);
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--t1);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .3;
+                transform: scale(.6)
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: .6
+            }
+
+            100% {
+                transform: scale(2.2);
+                opacity: 0
+            }
+        }
+
+        @keyframes dash-move {
+            to {
+                stroke-dashoffset: -60
+            }
+        }
+
+        @keyframes fade-up {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(12px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        @keyframes bar-grow {
+            from {
+                width: 0 !important
+            }
+        }
+
+        .nav {
+            height: var(--nav-h);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            background: var(--s1);
+            border-bottom: 1px solid var(--b1);
+            z-index: 3000;
+            flex-shrink: 0
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--blue);
+            letter-spacing: -.3px;
+            flex-shrink: 0;
+            margin-right: 4px
+        }
+
+        .logo-dot {
+            position: relative;
+            width: 8px;
+            height: 8px
+        }
+
+        .logo-dot::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--blue);
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite
+        }
+
+        .logo-dot::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border: 1px solid var(--blue);
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 380px;
+            position: relative
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--t3);
+            pointer-events: none
+        }
+
+        .search-box input {
+            width: 100%;
+            background: var(--s3);
+            border: 1px solid var(--b2);
+            color: var(--t1);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            padding: 8px 12px 8px 32px;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s
+        }
+
+        .search-box input::placeholder {
+            color: var(--t4)
+        }
+
+        .search-box input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px var(--blue-dim)
+        }
+
+        .btn-primary {
+            background: var(--blue);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: .3px;
+            transition: opacity .15s, transform .1s;
+            flex-shrink: 0;
+            white-space: nowrap
+        }
+
+        .btn-primary:hover {
+            opacity: .85
+        }
+
+        .btn-primary:active {
+            transform: scale(.97)
+        }
+
+        .nav-sep {
+            width: 1px;
+            height: 22px;
+            background: var(--b1);
+            flex-shrink: 0;
+            margin: 0 4px
+        }
+
+        .layers {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0
+        }
+
+        .layer-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 9px;
+            border-radius: 20px;
+            border: 1px solid var(--b2);
+            background: transparent;
+            color: var(--t3);
+            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap
+        }
+
+        .layer-pill .pip {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .layer-pill.on {
+            border-color: transparent;
+            color: var(--t1)
+        }
+
+        .layer-pill[data-l="routes"].on {
+            background: rgba(56, 189, 248, .15);
+            color: var(--blue)
+        }
+
+        .layer-pill[data-l="heat"].on {
+            background: rgba(192, 132, 252, .15);
+            color: var(--purple)
+        }
+
+        .layer-pill[data-l="risk"].on {
+            background: rgba(248, 113, 113, .15);
+            color: var(--red)
+        }
+
+        .alert-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background: var(--red-dim);
+            border: 1px solid rgba(248, 113, 113, .25);
+            color: var(--red);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-left: auto;
+            transition: background .15s
+        }
+
+        .alert-badge:hover {
+            background: rgba(248, 113, 113, .18)
+        }
+
+        .alert-pulse {
+            width: 6px;
+            height: 6px;
+            background: var(--red);
+            border-radius: 50%;
+            animation: pulse-dot 1.2s ease-in-out infinite
+        }
+
+        .cbar {
+            height: var(--cbar-h);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            background: var(--s2);
+            border-bottom: 1px solid var(--b1);
+            flex-shrink: 0;
+            z-index: 2999;
+            overflow: hidden
+        }
+
+        .c-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: linear-gradient(135deg, #1d4ed8, #60a5fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Mono', monospace;
+            font-size: 6.5px;
+            font-weight: 700;
+            color: #fff;
+            text-align: center;
+            line-height: 1.25;
+            flex-shrink: 0
+        }
+
+        .c-id {
+            flex-shrink: 0
+        }
+
+        .c-name {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.1
+        }
+
+        .c-exchange {
+            font-size: 10px;
+            color: var(--t3);
+            margin-top: 1px
+        }
+
+        .c-pills {
+            display: flex;
+            gap: 4px;
+            margin-left: 4px;
+            overflow: hidden
+        }
+
+        .c-pill {
+            font-size: 11px;
+            color: var(--t3);
+            background: var(--s3);
+            border: 1px solid var(--b1);
+            padding: 3px 9px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+            flex-shrink: 0
+        }
+
+        .c-pill:hover,
+        .c-pill.on {
+            border-color: var(--blue);
+            color: var(--blue);
+            background: var(--blue-dim)
+        }
+
+        .kpis {
+            margin-left: auto;
+            display: flex;
+            gap: 1px;
+            flex-shrink: 0;
+            background: var(--b1);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--b1)
+        }
+
+        .kpi {
+            padding: 5px 14px;
+            background: var(--s2);
+            text-align: center;
+            transition: background .15s
+        }
+
+        .kpi:hover {
+            background: var(--s3)
+        }
+
+        .kpi-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1
+        }
+
+        .kpi-lbl {
+            font-size: 9px;
+            color: var(--t3);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-top: 2px
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden
+        }
+
+        .map-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden
+        }
+
+        #map {
+            width: 100%;
+            height: 100%
+        }
+
+        .leaflet-tile-pane {
+            filter: brightness(.95) saturate(.9)
+        }
+
+        .leaflet-control-zoom {
+            border: 1px solid var(--b2) !important;
+            border-radius: 8px !important;
+            overflow: hidden;
+            box-shadow: var(--shadow) !important
+        }
+
+        .leaflet-control-zoom a {
+            background: var(--s2) !important;
+            color: var(--t2) !important;
+            border-color: var(--b1) !important;
+            width: 28px !important;
+            height: 28px !important;
+            line-height: 28px !important
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: var(--s3) !important
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(7, 10, 16, .9) !important;
+            color: var(--t4) !important;
+            font-size: 9px !important;
+            padding: 2px 6px !important
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: var(--s2) !important;
+            border: 1px solid var(--b2) !important;
+            border-radius: 10px !important;
+            color: var(--t1) !important;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, .7) !important;
+            font-family: 'Inter', sans-serif !important;
+            padding: 0 !important;
+            overflow: hidden
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important
+        }
+
+        .leaflet-popup-tip {
+            background: var(--s2) !important
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--t3) !important;
+            top: 10px !important;
+            right: 10px !important;
+            font-size: 16px !important;
+            z-index: 1
+        }
+
+        .popup-inner {
+            padding: 14px 16px
+        }
+
+        .popup-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            margin-bottom: 8px
+        }
+
+        .popup-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3
+        }
+
+        .popup-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        .popup-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px
+        }
+
+        .popup-key {
+            font-size: 11px;
+            color: var(--t3)
+        }
+
+        .popup-val {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--t2)
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            left: 14px;
+            z-index: 800;
+            background: rgba(7, 10, 16, .93);
+            border: 1px solid var(--b2);
+            border-radius: 10px;
+            padding: 12px 14px;
+            backdrop-filter: blur(12px);
+            animation: fade-up .4s ease both
+        }
+
+        .legend-title {
+            font-size: 9px;
+            font-family: 'Space Mono', monospace;
+            color: var(--t4);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 9px
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--t2);
+            margin-bottom: 6px
+        }
+
+        .legend-row:last-child {
+            margin-bottom: 0
+        }
+
+        .l-line {
+            width: 22px;
+            height: 0;
+            flex-shrink: 0
+        }
+
+        .l-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .health-overlay {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 800;
+            background: rgba(7, 10, 16, .93);
+            border: 1px solid var(--b2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            backdrop-filter: blur(12px);
+            animation: fade-up .4s ease both;
+            min-width: 180px
+        }
+
+        .health-label {
+            font-size: 9px;
+            font-family: 'Space Mono', monospace;
+            color: var(--t3);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            margin-bottom: 8px
+        }
+
+        .health-score-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            margin-bottom: 8px
+        }
+
+        .health-score {
+            font-family: 'Space Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--yellow);
+            line-height: 1
+        }
+
+        .health-max {
+            font-size: 12px;
+            color: var(--t3)
+        }
+
+        .health-bar-bg {
+            height: 4px;
+            background: var(--b2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px
+        }
+
+        .health-bar {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--green), var(--yellow));
+            animation: bar-grow .8s ease .3s both
+        }
+
+        .health-sub {
+            font-size: 10px;
+            color: var(--t3)
+        }
+
+        .sidebar {
+            background: var(--s1);
+            border-left: 1px solid var(--b1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: var(--sb-w);
+            transition: width 0.3s ease, opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 60px;
+            background: #0c1118;
+            border: 1px solid #22334a;
+            color: #38bdf8;
+            border-radius: 8px 0 0 8px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: color 0.2s;
+        }
+
+        .sb-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden
+        }
+
+        .sb-scroll::-webkit-scrollbar {
+            width: 3px
+        }
+
+        .sb-scroll::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        .sb-scroll::-webkit-scrollbar-thumb {
+            background: var(--b2);
+            border-radius: 2px
+        }
+
+        .section {
+            border-bottom: 1px solid var(--b1);
+            flex-shrink: 0;
+            animation: slide-in .3s ease both
+        }
+
+        .s-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 14px;
+            cursor: pointer;
+            user-select: none;
+            transition: background .15s
+        }
+
+        .s-head:hover {
+            background: var(--s2)
+        }
+
+        .s-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0
+        }
+
+        .s-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--t2);
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            flex: 1
+        }
+
+        .s-meta {
+            font-size: 10px;
+            color: var(--t3)
+        }
+
+        .s-arrow {
+            font-size: 10px;
+            color: var(--t4);
+            transition: transform .25s;
+            flex-shrink: 0
+        }
+
+        .section.open .s-arrow {
+            transform: rotate(180deg)
+        }
+
+        .s-body {
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height .3s cubic-bezier(.4, 0, .2, 1)
+        }
+
+        .section.open .s-body {
+            max-height: 600px
+        }
+
+        .s-content {
+            padding: 0 12px 12px
+        }
+
+        .risk-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .risk-card {
+            border-radius: 8px;
+            border-left: 2px solid transparent;
+            overflow: hidden;
+            cursor: pointer;
+            transition: opacity .15s
+        }
+
+        .risk-card:hover {
+            opacity: .85
+        }
+
+        .risk-card.hi {
+            border-left-color: var(--red);
+            background: var(--red-dim)
+        }
+
+        .risk-card.md {
+            border-left-color: var(--yellow);
+            background: var(--yel-dim)
+        }
+
+        .risk-card.lo {
+            border-left-color: var(--green);
+            background: var(--grn-dim)
+        }
+
+        .risk-head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 10px 0
+        }
+
+        .risk-badge {
+            font-size: 8px;
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 2px 5px;
+            border-radius: 3px;
+            flex-shrink: 0
+        }
+
+        .risk-card.hi .risk-badge {
+            background: rgba(248, 113, 113, .2);
+            color: var(--red)
+        }
+
+        .risk-card.md .risk-badge {
+            background: rgba(251, 191, 36, .2);
+            color: var(--yellow)
+        }
+
+        .risk-card.lo .risk-badge {
+            background: rgba(52, 211, 153, .2);
+            color: var(--green)
+        }
+
+        .risk-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--t1);
+            flex: 1
+        }
+
+        .risk-toggle {
+            font-size: 9px;
+            color: var(--t3);
+            transition: transform .2s;
+            flex-shrink: 0
+        }
+
+        .risk-card.expanded .risk-toggle {
+            transform: rotate(180deg)
+        }
+
+        .risk-brief {
+            padding: 4px 10px 9px;
+            font-size: 11px;
+            color: var(--t2);
+            line-height: 1.45
+        }
+
+        .risk-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .25s ease;
+            padding: 0 10px
+        }
+
+        .risk-card.expanded .risk-detail {
+            max-height: 120px;
+            padding-bottom: 10px
+        }
+
+        .risk-detail-inner {
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, .05);
+            font-size: 10px;
+            color: var(--t3);
+            line-height: 1.5
+        }
+
+        .risk-impact {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+            flex-wrap: wrap
+        }
+
+        .risk-tag-item {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .05);
+            color: var(--t2)
+        }
+
+        .health-mini {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px
+        }
+
+        .h-mini-card {
+            flex: 1;
+            background: var(--s3);
+            border-radius: 7px;
+            padding: 8px;
+            text-align: center;
+            border: 1px solid var(--b1)
+        }
+
+        .h-mini-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 3px
+        }
+
+        .h-mini-lbl {
+            font-size: 9px;
+            color: var(--t3);
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        .mat-list {
+            display: flex;
+            flex-direction: column;
+            gap: 9px
+        }
+
+        .mat {
+            cursor: pointer;
+            border-radius: 7px;
+            padding: 8px 9px;
+            background: var(--s2);
+            border: 1px solid transparent;
+            transition: border-color .15s
+        }
+
+        .mat:hover {
+            border-color: var(--b2)
+        }
+
+        .mat-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 5px
+        }
+
+        .mat-icon {
+            font-size: 13px;
+            flex-shrink: 0
+        }
+
+        .mat-name {
+            font-size: 11px;
+            font-weight: 500;
+            flex: 1
+        }
+
+        .mat-price {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--blue);
+            flex-shrink: 0
+        }
+
+        .mat-price .chg {
+            font-size: 9px
+        }
+
+        .mat-price .up {
+            color: var(--red)
+        }
+
+        .mat-price .dn {
+            color: var(--green)
+        }
+
+        .mat-bar-bg {
+            height: 3px;
+            background: var(--b1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px
+        }
+
+        .mat-bar {
+            height: 100%;
+            border-radius: 2px;
+            animation: bar-grow .9s cubic-bezier(.4, 0, .2, 1) .4s both
+        }
+
+        .mat-foot {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: var(--t3)
+        }
+
+        .sup-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px
+        }
+
+        .sup {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 8px 9px;
+            background: var(--s2);
+            border-radius: 7px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: border-color .15s
+        }
+
+        .sup:hover {
+            border-color: var(--b2)
+        }
+
+        .sup-flag {
+            font-size: 16px;
+            flex-shrink: 0;
+            line-height: 1
+        }
+
+        .sup-body {
+            flex: 1;
+            min-width: 0
+        }
+
+        .sup-name {
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .sup-detail {
+            font-size: 10px;
+            color: var(--t3)
+        }
+
+        .sup-right {
+            text-align: right;
+            flex-shrink: 0
+        }
+
+        .sup-vol {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--blue)
+        }
+
+        .sup-status {
+            font-size: 9px;
+            margin-top: 1px
+        }
+
+        .sup-ok {
+            color: var(--green)
+        }
+
+        .sup-warn {
+            color: var(--yellow)
+        }
+
+        .sup-bad {
+            color: var(--red)
+        }
+
+        .price-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .price-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 9px;
+            background: var(--s2);
+            border-radius: 7px
+        }
+
+        .p-name {
+            font-size: 11px;
+            font-weight: 500;
+            flex: 1
+        }
+
+        .p-spark {
+            flex-shrink: 0
+        }
+
+        .p-right {
+            text-align: right;
+            flex-shrink: 0
+        }
+
+        .p-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .p-chg {
+            font-size: 9px;
+            margin-top: 1px
+        }
+
+        .heat-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px
+        }
+
+        .heat-grad {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--green), var(--yellow), var(--red))
+        }
+
+        .heat-lbl {
+            font-size: 9px;
+            color: var(--t3);
+            font-family: 'Space Mono', monospace;
+            flex-shrink: 0
+        }
+
+        .heat-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 5px
+        }
+
+        .heat-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 9px;
+            background: var(--s2);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background .15s
+        }
+
+        .heat-row:hover {
+            background: var(--s3)
+        }
+
+        .heat-pip {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0
+        }
+
+        .heat-body {
+            flex: 1;
+            min-width: 0
+        }
+
+        .heat-name {
+            font-size: 11px;
+            font-weight: 500
+        }
+
+        .heat-sector {
+            font-size: 10px;
+            color: var(--t3)
+        }
+
+        .heat-right {
+            text-align: right;
+            flex-shrink: 0
+        }
+
+        .heat-val {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--t2)
+        }
+
+        .heat-sub {
+            font-size: 9px;
+            color: var(--t4)
+        }
+
+        .sb-footer {
+            padding: 10px 14px;
+            font-size: 9px;
+            color: var(--t4);
+            font-family: 'Space Mono', monospace;
+            line-height: 1.7;
+            border-top: 1px solid var(--b1);
+            flex-shrink: 0
+        }
+
+        .statusbar {
+            height: 26px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 16px;
+            background: var(--s1);
+            border-top: 1px solid var(--b1);
+            font-size: 10px;
+            font-family: 'Space Mono', monospace;
+            color: var(--t4);
+            flex-shrink: 0;
+            z-index: 3000
+        }
+
+        .status-live {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--green)
+        }
+
+        .live-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse-dot 1.5s infinite
+        }
+
+        /* ═══ LIVE SHIPS ═══ */
+        .ship-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px
+        }
+
+        .ship-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 7px 9px;
+            background: var(--s2);
+            border-radius: 7px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: border-color .15s
+        }
+
+        .ship-item:hover {
+            border-color: var(--b2)
+        }
+
+        .ship-pip {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            flex-shrink: 0;
+            animation: pulse-dot 2s ease-in-out infinite
+        }
+
+        .ship-body {
+            flex: 1;
+            min-width: 0
+        }
+
+        .ship-name {
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .ship-detail {
+            font-size: 10px;
+            color: var(--t3)
+        }
+
+        .ship-right {
+            text-align: right;
+            flex-shrink: 0
+        }
+
+        .ship-speed {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            color: var(--green)
+        }
+
+        .ship-status {
+            font-size: 9px;
+            color: var(--t3);
+            margin-top: 1px
+        }
+
+        /* ═══ LIVE NEWS ═══ */
+        .news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .news-item {
+            padding: 9px 10px;
+            background: var(--s2);
+            border-radius: 7px;
+            border-left: 2px solid var(--blue);
+            cursor: pointer;
+            transition: border-color .15s, background .15s
+        }
+
+        .news-item:hover {
+            background: var(--s3);
+            border-left-color: var(--green)
+        }
+
+        .news-title {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--t1);
+            line-height: 1.4;
+            margin-bottom: 4px
+        }
+
+        .news-meta {
+            font-size: 9px;
+            color: var(--t3);
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .news-src {
+            font-family: 'Space Mono', monospace;
+            letter-spacing: .4px;
+            text-transform: uppercase;
+            color: var(--blue)
+        }
+
+        .news-tag {
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            background: rgba(56, 189, 248, .1);
+            color: var(--blue);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav">
+        <div class="logo">
+            <div class="logo-dot"></div>ChainScope
+        </div>
+        <div class="search-box">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input id="searchInput" type="text" value="Tata Steel Ltd." placeholder="Company, commodity, region...">
+        </div>
+        <button class="btn-primary" id="analyseBtn">Analyse →</button>
+        <div class="nav-sep"></div>
+        <div class="layers">
+            <button class="layer-pill on" data-l="routes" onclick="toggleLayer(this)">
+                <div class="pip" style="background:#38bdf8"></div> Routes
+            </button>
+            <button class="layer-pill on" data-l="heat" onclick="toggleLayer(this)">
+                <div class="pip" style="background:#c084fc"></div> Heatmap
+            </button>
+            <button class="layer-pill on" data-l="risk" onclick="toggleLayer(this)">
+                <div class="pip" style="background:#f87171"></div> Risk
+            </button>
+        </div>
+        <div class="alert-badge" id="alertBadge" onclick="scrollToRisk()">
+            <div class="alert-pulse"></div><span id="alertCount">2 Active Alerts</span>
+        </div>
+    </nav>
+    <div class="cbar">
+        <div class="c-avatar" id="cAvatar">TATA<br>STL</div>
+        <div class="c-id">
+            <div class="c-name" id="cName">Tata Steel Limited</div>
+            <div class="c-exchange" id="cExchange">NSE: TATASTEEL · BSE: 500470</div>
+        </div>
+        <div class="c-pills" id="cPills">
+            <span class="c-pill on" data-company="tata">Tata Steel</span>
+            <span class="c-pill" data-company="jsw">JSW Steel</span>
+            <span class="c-pill" data-company="reliance">Reliance</span>
+        </div>
+        <div class="kpis" id="kpis">
+            <div class="kpi">
+                <div class="kpi-val" id="kv0" style="color:var(--blue)">34.1MT</div>
+                <div class="kpi-lbl" id="kl0">Output/yr</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-val" id="kv1" style="color:var(--t1)">26</div>
+                <div class="kpi-lbl" id="kl1">Countries</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-val" id="kv2" style="color:var(--green)">₹2.47L Cr</div>
+                <div class="kpi-lbl" id="kl2">Mkt Cap</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-val" id="kv3" style="color:var(--yellow)">62/100</div>
+                <div class="kpi-lbl" id="kl3">Chain Score</div>
+            </div>
+        </div>
+    </div>
+    <div class="workspace">
+        <div class="map-wrap">
+            <button class="sidebar-toggle" id="sb-toggle">❯</button>
+            <div id="map"></div>
+            <div class="health-overlay">
+                <div class="health-label">Chain Health Score</div>
+                <div class="health-score-wrap">
+                    <div class="health-score" id="healthVal">62</div>
+                    <div class="health-max">/ 100</div>
+                </div>
+                <div class="health-bar-bg">
+                    <div class="health-bar" id="healthBar" style="width:62%"></div>
+                </div>
+                <div class="health-sub" id="healthSub">⚠ Moderate risk — 2 active disruptions</div>
+            </div>
+            <div class="map-legend">
+                <div class="legend-title">Legend</div>
+                <div class="legend-row">
+                    <div class="l-line" style="border-top:2px dashed rgba(56,189,248,.7)"></div>Sea Route
+                </div>
+                <div class="legend-row">
+                    <div class="l-line" style="border-top:2px solid rgba(251,146,60,.8)"></div>Rail / Land
+                </div>
+                <div class="legend-row">
+                    <div class="l-line" style="border-top:2px dashed rgba(248,113,113,.8)"></div>⚠ Disrupted
+                </div>
+                <div class="legend-row">
+                    <div class="l-dot" style="background:#38bdf8;box-shadow:0 0 6px #38bdf8"></div>HQ / Plant
+                </div>
+                <div class="legend-row">
+                    <div class="l-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></div>Raw Material
+                </div>
+                <div class="legend-row">
+                    <div class="l-dot" style="background:#34d399;box-shadow:0 0 5px #34d399"></div>Export Market
+                </div>
+                <div class="legend-row">
+                    <div class="l-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e;width:6px;height:6px"></div>
+                    Live Ship
+                </div>
+            </div>
+        </div>
+        <div class="sidebar">
+            <div class="sb-scroll" id="sb-scroll"></div>
+            <div class="sb-footer">CHAINSCOPE v3 · DEMO<br>Prod: AIS · UN Comtrade · MCX</div>
+        </div>
+    </div>
+    <div class="statusbar">
+        <span class="status-live" style="cursor:pointer" onclick="window.updateGlobalData()"><span
+                class="live-dot"></span><span id="statusText">MAP LIVE · CLICK TO REFRESH</span></span>
+        <span style="margin-left:auto;color:var(--t4)" id="lastUpdated">ChainScope — India-First Supply Chain
+            Intelligence · © 2026</span>
+    </div>
+    <script>
+        // ═══ COMPANY DATA ═══
+        const companies = {
+            tata: {
+                name: 'Tata Steel Limited', exchange: 'NSE: TATASTEEL · BSE: 500470', avatar: 'TATA<br>STL',
+                avatarBg: 'linear-gradient(135deg,#1d4ed8,#60a5fa)',
+                mapCenter: [18, 62], mapZoom: 3,
+                kpis: [{ v: '34.1MT', l: 'Output/yr', c: 'var(--blue)' }, { v: '26', l: 'Countries', c: 'var(--t1)' }, { v: '₹2.47L Cr', l: 'Mkt Cap', c: 'var(--green)' }, { v: '62/100', l: 'Chain Score', c: 'var(--yellow)' }],
+                health: { score: 62, color: 'var(--yellow)', sub: '⚠ Moderate risk — 2 active disruptions' },
+                alerts: [
+                    { sev: 'hi', badge: 'HIGH', title: 'Red Sea Disruption', brief: 'Houthi attacks blocking Suez Canal route.', detail: 'Suez Canal route diverted to Cape of Good Hope. Coal import costs up 35%. ETA delays of 12–18 days on all African supply routes.', tags: ['+35% shipping cost', '+18 day ETA', 'Q3 margin risk'] },
+                    { sev: 'md', badge: 'MED', title: 'Russia Sanctions — Coal', brief: '~2MT Siberian coking coal imports under review.', detail: 'Western sanctions restricting Siberian coking coal trade. Approximately 2MT/year at risk. Price premium of ~$40/MT on alternatives.', tags: ['2MT/yr at risk', '+$40/MT premium'] },
+                    { sev: 'lo', badge: 'LOW', title: 'Australia Ties — Stable', brief: 'India-AU ECTA active. Pilbara ore unaffected.', detail: 'India-Australia ECTA fully in force. BHP and Rio Tinto supply stable.', tags: ['ECTA tariff benefit', 'Supply stable'] }
+                ],
+                overview: { suppliers: 6, risks: 2, plants: 3, exports: 2, desc: 'Supply chain spans <b style="color:var(--t2)">26 countries</b>. Primary raw material sourcing from India (domestic) and Australia. Processing at Jamshedpur + Kalinganagar. Export to EU via Port Talbot, IJmuiden.' },
+                materials: [
+                    { icon: '🪨', name: 'Iron Ore (62% Fe)', price: '$118.40', chg: '▲2.3%', up: true, w: 82, color: 'var(--blue)', src: 'Odisha + Pilbara, AU', pct: '82% of input' },
+                    { icon: '🖤', name: 'Coking Coal', price: '$245.00', chg: '▼1.1%', up: false, w: 60, color: 'var(--orange)', src: 'Mozambique + Russia ⚠', pct: '60% of input' },
+                    { icon: '🔩', name: 'Scrap Metal', price: '$382.00', chg: '▲0.4%', up: true, w: 35, color: 'var(--green)', src: 'Domestic (India)', pct: '35% of input' },
+                    { icon: '🧪', name: 'Limestone', price: '$28.00', chg: '▼0.2%', up: false, w: 18, color: 'var(--purple)', src: 'Rajasthan, India', pct: 'Flux / additive' }
+                ],
+                suppliers: [
+                    { flag: '🇦🇺', name: 'BHP Group', detail: 'Iron Ore · Pilbara, WA', vol: '~5MT/yr', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇦🇺', name: 'Rio Tinto', detail: 'Iron Ore · Pilbara, WA', vol: '~3MT/yr', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇲🇿', name: 'Riversdale Mining', detail: 'Coking Coal · Mozambique', vol: '~4MT/yr', status: '● Route risk', cls: 'sup-warn' },
+                    { flag: '🇮🇳', name: 'NMDC Limited', detail: 'Iron Ore · Odisha / CG', vol: '~7MT/yr', status: '● Active', cls: 'sup-ok' }
+                ],
+                prices: [
+                    { name: '🪨 Iron Ore 62%', spark: '0,13 7,10 14,6 21,8 28,4 35,2 42,1', sc: '#f87171', val: '$118.40', chg: '▲ 2.3%', cc: 'var(--red)' },
+                    { name: '🖤 Coking Coal', spark: '0,2 7,5 14,7 21,4 28,9 35,6 42,10', sc: '#34d399', val: '$245.00', chg: '▼ 1.1%', cc: 'var(--green)' },
+                    { name: '🔩 HRC Steel', spark: '0,8 7,6 14,10 21,7 28,5 35,7 42,5', sc: '#38bdf8', val: '$520.00', chg: '▲ 0.8%', cc: 'var(--red)' },
+                    { name: '🚢 Baltic Dry Index', spark: '0,4 7,8 14,12 21,14 28,15 35,11 42,13', sc: '#fbbf24', val: '1,842', chg: '▲ 12.4%', cc: 'var(--yellow)' }
+                ],
+                heatmap: [
+                    { pip: '#f87171', name: 'Jharkhand + Odisha', sector: 'Steel · Mining · Iron Ore', val: '3.2L', lat: 22.5, lng: 85.5 },
+                    { pip: '#fbbf24', name: 'Maharashtra', sector: 'Auto Steel · Manufacturing', val: '2.1L', lat: 18.5, lng: 73.8 },
+                    { pip: '#fbbf24', name: 'Rajasthan', sector: 'Limestone · Cement', val: '1.8L', lat: 26.9, lng: 75.8 },
+                    { pip: '#34d399', name: 'West Bengal', sector: 'Steel · Port Logistics', val: '1.4L', lat: 22.7, lng: 88.3 },
+                    { pip: '#34d399', name: 'CG + Madhya Pradesh', sector: 'Coal · Iron Ore · Sponge', val: '1.1L', lat: 23.2, lng: 80.0 }
+                ],
+                markers: [
+                    { ll: [22.8, 86.2], c: '#38bdf8', e: '🏭', s: 40, tag: 'HQ + Main Plant', title: 'Jamshedpur, India', rows: [['Role', 'Tata Steel HQ & Integrated Plant'], ['Capacity', '12MT/yr'], ['Established', '1907'], ['State', 'Jharkhand, India']] },
+                    { ll: [20.9, 85.9], c: '#38bdf8', e: '🏭', s: 30, tag: 'Production Plant', title: 'Kalinganagar, Odisha', rows: [['Role', 'Greenfield Expansion'], ['Capacity', '8MT/yr'], ['Type', 'Flat Steel Products']] },
+                    { ll: [21.5, 84.8], c: '#fb923c', e: '⛏', s: 30, tag: 'Raw Material Source', title: 'Odisha Iron Ore Mines', rows: [['Commodity', 'Iron Ore'], ['Volume', '~12MT/yr'], ['Supplier', 'NMDC Ltd.']] },
+                    { ll: [-22.3, 117.5], c: '#fb923c', e: '⛏', s: 32, tag: 'Raw Material Source', title: 'Pilbara, Western Australia', rows: [['Commodity', 'Iron Ore (62% Fe)'], ['Volume', '~8MT/yr'], ['Suppliers', 'BHP + Rio Tinto']] },
+                    { ll: [-16.5, 35.3], c: '#fb923c', e: '⛏', s: 28, tag: 'Raw Material Source', title: 'Mozambique', rows: [['Commodity', 'Coking Coal'], ['Volume', '~4MT/yr'], ['Status', '⚠ Route disrupted']] },
+                    { ll: [53, 90], c: '#fbbf24', e: '⚠', s: 26, tag: 'Risk — Sanctions', title: 'Siberia, Russia', rows: [['Commodity', 'Coking Coal'], ['Volume', '~2MT/yr at risk'], ['Status', '⚠ Under review']] },
+                    { ll: [51.59, -3.78], c: '#34d399', e: '📦', s: 28, tag: 'Export Market', title: 'Port Talbot, UK 🇬🇧', rows: [['Role', 'Tata Steel Europe'], ['Capacity', '3MT/yr']] },
+                    { ll: [52.46, 4.62], c: '#34d399', e: '📦', s: 28, tag: 'Export Market', title: 'IJmuiden, Netherlands 🇳🇱', rows: [['Role', 'Tata Steel Europe — Main Hub'], ['Capacity', '7MT/yr']] },
+                    { ll: [20.5, 38], c: '#f87171', e: '🚨', s: 38, tag: 'DISRUPTION — HIGH', title: 'Red Sea — Houthi Zone', rows: [['Status', '🚨 ACTIVE'], ['Impact', 'Suez Canal blocked'], ['Shipping cost', '+ 35%']] }
+                ],
+                routes: [
+                    { pts: [[-22.3, 117.5], [-5, 100], [5, 88], [15, 80], [22.8, 86.2]], style: { color: '#38bdf8', weight: 1.8, opacity: .6, dashArray: '10 7' } },
+                    { pts: [[-16.5, 35.3], [-5, 55], [5, 68], [15, 74], [22.8, 86.2]], style: { color: '#38bdf8', weight: 1.8, opacity: .6, dashArray: '10 7' } },
+                    { pts: [[22.8, 86.2], [15, 68], [5, 60], [-5, 45], [-20, 30], [-34, 18], [-34, 0], [-10, -10], [10, -14], [30, -8], [45, -3], [51.59, -3.78]], style: { color: '#38bdf8', weight: 1.3, opacity: .3, dashArray: '10 7' } },
+                    { pts: [[22.8, 86.2], [15, 68], [5, 60], [-5, 45], [-20, 30], [-34, 18], [-34, 0], [-10, -10], [10, -14], [30, -8], [45, -2], [52.46, 4.62]], style: { color: '#38bdf8', weight: 1.3, opacity: .3, dashArray: '10 7' } },
+                    { pts: [[21.5, 84.8], [22.1, 85.5], [22.8, 86.2]], style: { color: '#fb923c', weight: 2.2, opacity: .7, dashArray: '5 4' } },
+                    { pts: [[53, 90], [45, 85], [35, 78], [28, 73], [22.8, 86.2]], style: { color: '#fbbf24', weight: 2.2, opacity: .5, dashArray: '5 4' } },
+                    { pts: [[22.8, 86.2], [18, 72], [15, 62], [20.5, 38], [28, 34], [32, 33]], style: { color: '#f87171', weight: 2, opacity: .75, dashArray: '8 5' } }
+                ],
+                heatCircles: [
+                    { ll: [22.5, 85.5], r: 130000, c: '#f87171', n: 'Jharkhand+Odisha Steel Belt', w: '3.2L workers' },
+                    { ll: [26.9, 75.8], r: 90000, c: '#fbbf24', n: 'Rajasthan Mining Zone', w: '1.8L workers' },
+                    { ll: [22.7, 88.3], r: 80000, c: '#fbbf24', n: 'West Bengal Steel', w: '1.4L workers' },
+                    { ll: [18.5, 73.8], r: 105000, c: '#34d399', n: 'Maharashtra Mfg', w: '2.1L workers' },
+                    { ll: [23.2, 80], r: 90000, c: '#34d399', n: 'CG+MP Coal Belt', w: '1.1L workers' }
+                ]
+            },
+            jsw: {
+                name: 'JSW Steel Limited', exchange: 'NSE: JSWSTEEL · BSE: 500228', avatar: 'JSW<br>STL',
+                avatarBg: 'linear-gradient(135deg,#0e7490,#22d3ee)',
+                mapCenter: [16, 76], mapZoom: 4,
+                kpis: [{ v: '28.5MT', l: 'Output/yr', c: 'var(--blue)' }, { v: '14', l: 'Countries', c: 'var(--t1)' }, { v: '₹2.32L Cr', l: 'Mkt Cap', c: 'var(--green)' }, { v: '74/100', l: 'Chain Score', c: 'var(--green)' }],
+                health: { score: 74, color: 'var(--green)', sub: '✅ Stable — 1 minor advisory' },
+                alerts: [
+                    { sev: 'md', badge: 'MED', title: 'Coking Coal Price Volatility', brief: 'Australian HCC prices fluctuating ±8% monthly.', detail: 'Spot prices for hard coking coal from Queensland volatile. JSW hedging 60% of Q4 requirements. Long-term contracts providing buffer.', tags: ['±8% monthly', '60% hedged'] },
+                    { sev: 'lo', badge: 'LOW', title: 'Dolvi Expansion On Track', brief: 'Phase 2 expansion at Dolvi progressing to plan.', detail: '5MT capacity addition at Dolvi, Maharashtra on schedule for Q2 2026 completion. No supply chain disruptions to construction materials.', tags: ['5MT addition', 'Q2 2026 target'] }
+                ],
+                overview: { suppliers: 5, risks: 1, plants: 4, exports: 3, desc: 'Supply chain spans <b style="color:var(--t2)">14 countries</b>. Domestic iron ore from Karnataka/Goa. Coking coal from Australia/USA. Plants at Vijayanagar, Dolvi, Salem, Jharsuguda.' },
+                materials: [
+                    { icon: '🪨', name: 'Iron Ore (Domestic)', price: '$112.00', chg: '▲1.8%', up: true, w: 75, color: 'var(--blue)', src: 'Karnataka + Goa', pct: '75% of input' },
+                    { icon: '🖤', name: 'Coking Coal (HCC)', price: '$258.00', chg: '▲3.2%', up: true, w: 55, color: 'var(--orange)', src: 'Queensland, Australia', pct: '55% of input' },
+                    { icon: '🔩', name: 'Scrap / DRI', price: '$395.00', chg: '▼0.6%', up: false, w: 30, color: 'var(--green)', src: 'Domestic (India)', pct: '30% of input' },
+                    { icon: '⚡', name: 'Energy (Coal/Gas)', price: '$92.00', chg: '▲1.4%', up: true, w: 22, color: 'var(--purple)', src: 'Domestic + Imported', pct: 'Cost driver' }
+                ],
+                suppliers: [
+                    { flag: '🇮🇳', name: 'NMDC Limited', detail: 'Iron Ore · Karnataka', vol: '~8MT/yr', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇦🇺', name: 'BHP Mitsubishi Alliance', detail: 'Coking Coal · QLD', vol: '~4MT/yr', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇺🇸', name: 'Arch Resources', detail: 'Coking Coal · West Virginia', vol: '~2MT/yr', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇮🇳', name: 'Vedanta (Sesa Goa)', detail: 'Iron Ore · Goa', vol: '~3MT/yr', status: '● Active', cls: 'sup-ok' }
+                ],
+                prices: [
+                    { name: '🪨 Iron Ore 62%', spark: '0,13 7,10 14,6 21,8 28,4 35,2 42,1', sc: '#f87171', val: '$118.40', chg: '▲ 2.3%', cc: 'var(--red)' },
+                    { name: '🖤 HCC Coal', spark: '0,4 7,2 14,6 21,3 28,5 35,1 42,3', sc: '#f87171', val: '$258.00', chg: '▲ 3.2%', cc: 'var(--red)' },
+                    { name: '🔩 HRC Steel', spark: '0,8 7,6 14,10 21,7 28,5 35,7 42,5', sc: '#38bdf8', val: '$520.00', chg: '▲ 0.8%', cc: 'var(--red)' },
+                    { name: '🚢 Baltic Dry Index', spark: '0,4 7,8 14,12 21,14 28,15 35,11 42,13', sc: '#fbbf24', val: '1,842', chg: '▲ 12.4%', cc: 'var(--yellow)' }
+                ],
+                heatmap: [
+                    { pip: '#f87171', name: 'Karnataka (Bellary)', sector: 'Steel · Iron Ore Mining', val: '2.8L', lat: 15.1, lng: 76.9 },
+                    { pip: '#fbbf24', name: 'Maharashtra (Dolvi)', sector: 'Flat Steel · Port Ops', val: '1.6L', lat: 18.8, lng: 72.9 },
+                    { pip: '#34d399', name: 'Tamil Nadu (Salem)', sector: 'Special Steel · Alloy', val: '0.9L', lat: 11.7, lng: 78.2 },
+                    { pip: '#34d399', name: 'Odisha (Jharsuguda)', sector: 'Sponge Iron · Energy', val: '0.7L', lat: 21.9, lng: 84.0 }
+                ],
+                markers: [
+                    { ll: [15.1, 76.9], c: '#38bdf8', e: '🏭', s: 40, tag: 'HQ + Main Plant', title: 'Vijayanagar, Karnataka', rows: [['Role', 'JSW Steel — Largest Plant'], ['Capacity', '18MT/yr'], ['Type', 'Integrated Steel']] },
+                    { ll: [18.8, 72.9], c: '#38bdf8', e: '🏭', s: 30, tag: 'Production Plant', title: 'Dolvi, Maharashtra', rows: [['Role', 'Coastal Steel Plant'], ['Capacity', '10MT/yr'], ['Expansion', 'Phase 2 underway']] },
+                    { ll: [11.7, 78.2], c: '#38bdf8', e: '🏭', s: 26, tag: 'Production Plant', title: 'Salem, Tamil Nadu', rows: [['Role', 'Special Steel'], ['Capacity', '1MT/yr']] },
+                    { ll: [21.9, 84], c: '#38bdf8', e: '🏭', s: 26, tag: 'Production Plant', title: 'Jharsuguda, Odisha', rows: [['Role', 'Sponge Iron + Power'], ['Capacity', '0.6MT/yr']] },
+                    { ll: [14.5, 75.5], c: '#fb923c', e: '⛏', s: 30, tag: 'Raw Material', title: 'Karnataka Iron Ore Belt', rows: [['Commodity', 'Iron Ore'], ['Volume', '~10MT/yr'], ['Source', 'Bellary-Hospet Belt']] },
+                    { ll: [15.4, 74], c: '#fb923c', e: '⛏', s: 28, tag: 'Raw Material', title: 'Goa Iron Ore', rows: [['Commodity', 'Iron Ore'], ['Volume', '~3MT/yr'], ['Supplier', 'Vedanta (Sesa Goa)']] },
+                    { ll: [-22, 150], c: '#fb923c', e: '⛏', s: 30, tag: 'Raw Material', title: 'Queensland, Australia', rows: [['Commodity', 'Coking Coal (HCC)'], ['Volume', '~4MT/yr'], ['Supplier', 'BHP Mitsubishi']] },
+                    { ll: [37.8, -81.2], c: '#fb923c', e: '⛏', s: 26, tag: 'Raw Material', title: 'West Virginia, USA', rows: [['Commodity', 'Coking Coal'], ['Volume', '~2MT/yr'], ['Supplier', 'Arch Resources']] },
+                    { ll: [38, 127.8], c: '#34d399', e: '📦', s: 28, tag: 'Export Market', title: 'South Korea 🇰🇷', rows: [['Products', 'HRC, CRC'], ['Volume', '~1.2MT/yr']] },
+                    { ll: [6.9, 79.9], c: '#34d399', e: '📦', s: 26, tag: 'Export Market', title: 'Sri Lanka 🇱🇰', rows: [['Products', 'Rebar, Wire Rod'], ['Volume', '~0.4MT/yr']] }
+                ],
+                routes: [
+                    { pts: [[-22, 150], [-10, 130], [0, 110], [10, 90], [18.8, 72.9]], style: { color: '#38bdf8', weight: 1.8, opacity: .6, dashArray: '10 7' } },
+                    { pts: [[37.8, -81.2], [35, -60], [28, -30], [20, 10], [12, 50], [10, 65], [18.8, 72.9]], style: { color: '#38bdf8', weight: 1.5, opacity: .4, dashArray: '10 7' } },
+                    { pts: [[14.5, 75.5], [15.1, 76.9]], style: { color: '#fb923c', weight: 2.2, opacity: .7, dashArray: '5 4' } },
+                    { pts: [[15.4, 74], [15.1, 76.9]], style: { color: '#fb923c', weight: 2, opacity: .6, dashArray: '5 4' } },
+                    { pts: [[15.1, 76.9], [13, 78], [10, 79], [6.9, 79.9]], style: { color: '#34d399', weight: 1.5, opacity: .5, dashArray: '8 5' } },
+                    { pts: [[18.8, 72.9], [15, 74], [10, 80], [12, 100], [25, 120], [38, 127.8]], style: { color: '#34d399', weight: 1.5, opacity: .5, dashArray: '8 5' } }
+                ],
+                heatCircles: [
+                    { ll: [15.1, 76.9], r: 120000, c: '#f87171', n: 'Karnataka Steel Belt', w: '2.8L workers' },
+                    { ll: [18.8, 72.9], r: 90000, c: '#fbbf24', n: 'Maharashtra Coast', w: '1.6L workers' },
+                    { ll: [11.7, 78.2], r: 70000, c: '#34d399', n: 'Tamil Nadu Steel', w: '0.9L workers' },
+                    { ll: [21.9, 84], r: 60000, c: '#34d399', n: 'Odisha Industry', w: '0.7L workers' }
+                ]
+            },
+            reliance: {
+                name: 'Reliance Industries Limited', exchange: 'NSE: RELIANCE · BSE: 500325', avatar: 'RIL',
+                avatarBg: 'linear-gradient(135deg,#7c3aed,#a78bfa)',
+                mapCenter: [22, 68], mapZoom: 4,
+                kpis: [{ v: '1.4M bpd', l: 'Refining', c: 'var(--blue)' }, { v: '30+', l: 'Countries', c: 'var(--t1)' }, { v: '₹17.8L Cr', l: 'Mkt Cap', c: 'var(--green)' }, { v: '88/100', l: 'Chain Score', c: 'var(--green)' }],
+                health: { score: 88, color: 'var(--green)', sub: '✅ Strong — diversified & resilient' },
+                alerts: [
+                    { sev: 'lo', badge: 'LOW', title: 'Crude Oil Price Watch', brief: 'Brent crude steady at $82–85/bbl range.', detail: 'Global crude prices stable. Jamnagar refinery margins healthy at $8–10/bbl. No supply disruptions forecast for Middle East sourcing routes.', tags: ['$82-85/bbl Brent', 'Margins healthy'] },
+                    { sev: 'lo', badge: 'LOW', title: 'Petchem Demand Steady', brief: 'Petrochemical margins improving in Asia-Pacific.', detail: 'PP and PE demand recovery in Asia. Jamnagar petchem complex operating at 95% utilization. Ethylene cracker output normalized.', tags: ['95% utilization', 'Asia demand up'] }
+                ],
+                overview: { suppliers: 4, risks: 0, plants: 2, exports: 5, desc: 'Supply chain spans <b style="color:var(--t2)">30+ countries</b>. World\'s largest single-site refinery at Jamnagar (1.4M bpd). Crude sourced from Middle East, Africa. Exports refined products globally.' },
+                materials: [
+                    { icon: '🛢', name: 'Crude Oil (Brent)', price: '$83.20', chg: '▲0.6%', up: true, w: 90, color: 'var(--blue)', src: 'Saudi Arabia + Iraq', pct: '90% of input' },
+                    { icon: '🔥', name: 'Natural Gas (LNG)', price: '$12.40', chg: '▼2.1%', up: false, w: 45, color: 'var(--orange)', src: 'Qatar + Domestic KG Basin', pct: '45% energy input' },
+                    { icon: '🧪', name: 'Naphtha', price: '$648.00', chg: '▲1.2%', up: true, w: 35, color: 'var(--green)', src: 'Internal + Import', pct: 'Petchem feedstock' },
+                    { icon: '⚡', name: 'Ethylene', price: '$1,020', chg: '▲0.8%', up: true, w: 28, color: 'var(--purple)', src: 'Jamnagar Cracker', pct: 'Key intermediate' }
+                ],
+                suppliers: [
+                    { flag: '🇸🇦', name: 'Saudi Aramco', detail: 'Crude Oil · KSA', vol: '~400K bpd', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇮🇶', name: 'Iraq (Basra)', detail: 'Crude Oil · Iraq', vol: '~250K bpd', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇶🇦', name: 'QatarEnergy', detail: 'LNG · Qatar', vol: '~8 MTPA', status: '● Active', cls: 'sup-ok' },
+                    { flag: '🇦🇪', name: 'ADNOC', detail: 'Crude Oil · Abu Dhabi', vol: '~150K bpd', status: '● Active', cls: 'sup-ok' }
+                ],
+                prices: [
+                    { name: '🛢 Brent Crude', spark: '0,8 7,6 14,5 21,7 28,4 35,3 42,4', sc: '#38bdf8', val: '$83.20', chg: '▲ 0.6%', cc: 'var(--red)' },
+                    { name: '🔥 Natural Gas', spark: '0,4 7,6 14,8 21,10 28,12 35,9 42,11', sc: '#34d399', val: '$12.40', chg: '▼ 2.1%', cc: 'var(--green)' },
+                    { name: '🧪 Naphtha', spark: '0,10 7,8 14,6 21,7 28,5 35,4 42,3', sc: '#f87171', val: '$648.00', chg: '▲ 1.2%', cc: 'var(--red)' },
+                    { name: '⛽ Diesel', spark: '0,6 7,5 14,7 21,4 28,3 35,5 42,4', sc: '#fbbf24', val: '$98.50', chg: '▲ 0.4%', cc: 'var(--red)' }
+                ],
+                heatmap: [
+                    { pip: '#f87171', name: 'Gujarat (Jamnagar)', sector: 'Refining · Petrochemicals', val: '1.2L', lat: 22.5, lng: 70.1 },
+                    { pip: '#fbbf24', name: 'Maharashtra (Mumbai)', sector: 'Corporate HQ · Retail · Jio', val: '3.5L', lat: 19.1, lng: 72.9 },
+                    { pip: '#fbbf24', name: 'Andhra Pradesh (KG Basin)', sector: 'O&G Exploration · Gas', val: '0.6L', lat: 16.5, lng: 82.2 },
+                    { pip: '#34d399', name: 'Uttar Pradesh', sector: 'Retail · Jio · Distribution', val: '2.8L', lat: 26.8, lng: 80.9 }
+                ],
+                markers: [
+                    { ll: [22.5, 70.1], c: '#38bdf8', e: '🏭', s: 42, tag: 'Main Refinery', title: 'Jamnagar, Gujarat', rows: [['Role', 'World\'s Largest Refinery'], ['Capacity', '1.4M bpd'], ['Type', 'Integrated Refinery + Petchem']] },
+                    { ll: [19.1, 72.9], c: '#38bdf8', e: '🏢', s: 32, tag: 'Corporate HQ', title: 'Mumbai, Maharashtra', rows: [['Role', 'Reliance HQ — Maker Chambers'], ['Divisions', 'O&G, Retail, Jio, Petchem']] },
+                    { ll: [24.8, 46.7], c: '#fb923c', e: '🛢', s: 32, tag: 'Crude Source', title: 'Saudi Arabia', rows: [['Commodity', 'Crude Oil'], ['Volume', '~400K bpd'], ['Supplier', 'Saudi Aramco']] },
+                    { ll: [30.5, 47.8], c: '#fb923c', e: '🛢', s: 28, tag: 'Crude Source', title: 'Basra, Iraq', rows: [['Commodity', 'Crude Oil'], ['Volume', '~250K bpd']] },
+                    { ll: [25.3, 51.3], c: '#fb923c', e: '🔥', s: 28, tag: 'LNG Source', title: 'Qatar', rows: [['Commodity', 'LNG'], ['Volume', '~8 MTPA'], ['Supplier', 'QatarEnergy']] },
+                    { ll: [24.5, 54.7], c: '#fb923c', e: '🛢', s: 26, tag: 'Crude Source', title: 'Abu Dhabi, UAE', rows: [['Commodity', 'Crude Oil'], ['Volume', '~150K bpd'], ['Supplier', 'ADNOC']] },
+                    { ll: [1.3, 103.8], c: '#34d399', e: '📦', s: 28, tag: 'Export Market', title: 'Singapore 🇸🇬', rows: [['Products', 'Diesel, Jet Fuel, Naphtha'], ['Role', 'Asia Trading Hub']] },
+                    { ll: [51.5, -0.1], c: '#34d399', e: '📦', s: 26, tag: 'Export Market', title: 'London / Europe 🇬🇧', rows: [['Products', 'Refined Products'], ['Role', 'European Distribution']] },
+                    { ll: [29, -90], c: '#34d399', e: '📦', s: 26, tag: 'Export Market', title: 'US Gulf Coast 🇺🇸', rows: [['Products', 'Diesel, Gasoline'], ['Role', 'Americas Export']] }
+                ],
+                routes: [
+                    { pts: [[24.8, 46.7], [23, 55], [22.5, 70.1]], style: { color: '#fb923c', weight: 2.2, opacity: .7, dashArray: '5 4' } },
+                    { pts: [[30.5, 47.8], [28, 55], [25, 62], [22.5, 70.1]], style: { color: '#fb923c', weight: 2, opacity: .6, dashArray: '5 4' } },
+                    { pts: [[25.3, 51.3], [24, 58], [22.5, 70.1]], style: { color: '#fb923c', weight: 1.8, opacity: .5, dashArray: '5 4' } },
+                    { pts: [[24.5, 54.7], [23, 60], [22.5, 70.1]], style: { color: '#fb923c', weight: 1.5, opacity: .5, dashArray: '5 4' } },
+                    { pts: [[22.5, 70.1], [18, 75], [10, 82], [5, 90], [1.3, 103.8]], style: { color: '#38bdf8', weight: 1.8, opacity: .6, dashArray: '10 7' } },
+                    { pts: [[22.5, 70.1], [20, 62], [18, 50], [15, 38], [20, 20], [30, 5], [40, -5], [48, -5], [51.5, -0.1]], style: { color: '#38bdf8', weight: 1.3, opacity: .4, dashArray: '10 7' } },
+                    { pts: [[22.5, 70.1], [20, 62], [18, 50], [15, 38], [20, 20], [30, 5], [35, -20], [32, -50], [30, -70], [29, -90]], style: { color: '#38bdf8', weight: 1.3, opacity: .3, dashArray: '10 7' } }
+                ],
+                heatCircles: [
+                    { ll: [22.5, 70.1], r: 110000, c: '#f87171', n: 'Jamnagar Refinery Complex', w: '1.2L workers' },
+                    { ll: [19.1, 72.9], r: 120000, c: '#fbbf24', n: 'Mumbai Metro — Retail/Jio', w: '3.5L workers' },
+                    { ll: [16.5, 82.2], r: 80000, c: '#fbbf24', n: 'KG Basin Gas', w: '0.6L workers' },
+                    { ll: [26.8, 80.9], r: 100000, c: '#34d399', n: 'UP Distribution', w: '2.8L workers' }
+                ]
+            }
+        };
+
+        let layerState = { routes: true, heat: true, risk: true };
+        let activeMarkers = [];
+
+        function renderSidebar(d) {
+            const sb = document.getElementById('sb-scroll');
+            const alertCount = d.alerts.length;
+            document.getElementById('alertCount').textContent = alertCount + ' Active Alert' + (alertCount !== 1 ? 's' : '');
+
+            let riskHtml = d.alerts.map(a => `
+    <div class="risk-card ${a.sev}" onclick="toggleRisk(this)">
+      <div class="risk-head"><div class="risk-badge">${a.badge}</div><div class="risk-title">${a.title}</div><div class="risk-toggle">▼</div></div>
+      <div class="risk-brief">${a.brief}</div>
+      <div class="risk-detail"><div class="risk-detail-inner">${a.detail}<div class="risk-impact">${a.tags.map(t => '<span class="risk-tag-item">' + t + '</span>').join('')}</div></div></div>
+    </div>`).join('');
+
+            let matHtml = d.materials.map(m => `
+    <div class="mat"><div class="mat-top"><span class="mat-icon">${m.icon}</span><span class="mat-name">${m.name}</span><div class="mat-price">${m.price} <span class="chg ${m.up ? 'up' : 'dn'}">${m.chg}</span></div></div>
+    <div class="mat-bar-bg"><div class="mat-bar" style="width:${m.w}%;background:linear-gradient(90deg,${m.color},${m.color}40)"></div></div>
+    <div class="mat-foot"><span>${m.src}</span><span>${m.pct}</span></div></div>`).join('');
+
+            let supHtml = d.suppliers.map(s => `
+    <div class="sup"><div class="sup-flag">${s.flag}</div><div class="sup-body"><div class="sup-name">${s.name}</div><div class="sup-detail">${s.detail}</div></div>
+    <div class="sup-right"><div class="sup-vol">${s.vol}</div><div class="sup-status ${s.cls}">${s.status}</div></div></div>`).join('');
+
+            let priceHtml = d.prices.map(p => `
+    <div class="price-row"><div class="p-name">${p.name}</div>
+    <svg class="p-spark" width="42" height="16" viewBox="0 0 42 16"><polyline points="${p.spark}" fill="none" stroke="${p.sc}" stroke-width="1.5"/></svg>
+    <div class="p-right"><div class="p-val">${p.val}</div><div class="p-chg" style="color:${p.cc}">${p.chg}</div></div></div>`).join('');
+
+            let heatHtml = d.heatmap.map(h => `
+    <div class="heat-row" onclick="flyToMap(${h.lat},${h.lng},6)"><div class="heat-pip" style="background:${h.pip}"></div>
+    <div class="heat-body"><div class="heat-name">${h.name}</div><div class="heat-sector">${h.sector}</div></div>
+    <div class="heat-right"><div class="heat-val">${h.val}</div><div class="heat-sub">workers</div></div></div>`).join('');
+
+            const hiCount = d.alerts.filter(a => a.sev === 'hi' || a.sev === 'md').length;
+            sb.innerHTML = `
+    <div class="section open" id="sec-risk"><div class="s-head" onclick="toggleSection('sec-risk')"><div class="s-icon" style="background:rgba(248,113,113,.12)">⚡</div><div class="s-title">Risk Alerts</div><div class="s-meta" style="color:var(--red)">${alertCount} Active</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="risk-list">${riskHtml}</div></div></div></div>
+    <div class="section open" id="sec-overview"><div class="s-head" onclick="toggleSection('sec-overview')"><div class="s-icon" style="background:rgba(56,189,248,.1)">📊</div><div class="s-title">Chain Overview</div><div class="s-meta">${d.overview.suppliers + d.overview.plants} nodes</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="health-mini"><div class="h-mini-card"><div class="h-mini-val" style="color:var(--green)">${d.overview.suppliers}</div><div class="h-mini-lbl">Suppliers</div></div><div class="h-mini-card"><div class="h-mini-val" style="color:var(--yellow)">${d.overview.risks}</div><div class="h-mini-lbl">Risks</div></div><div class="h-mini-card"><div class="h-mini-val" style="color:var(--blue)">${d.overview.plants}</div><div class="h-mini-lbl">Plants</div></div><div class="h-mini-card"><div class="h-mini-val" style="color:var(--purple)">${d.overview.exports}</div><div class="h-mini-lbl">Exports</div></div></div><div style="font-size:11px;color:var(--t3);line-height:1.5;padding:2px 2px 0">${d.overview.desc}</div></div></div></div>
+    <div class="section open" id="sec-mats"><div class="s-head" onclick="toggleSection('sec-mats')"><div class="s-icon" style="background:rgba(251,146,60,.1)">⛏</div><div class="s-title">Raw Materials</div><div class="s-meta">${d.materials.length} inputs</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="mat-list">${matHtml}</div></div></div></div>
+    <div class="section" id="sec-sup"><div class="s-head" onclick="toggleSection('sec-sup')"><div class="s-icon" style="background:rgba(52,211,153,.1)">🤝</div><div class="s-title">Key Suppliers</div><div class="s-meta">${d.suppliers.length} partners</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="sup-list">${supHtml}</div></div></div></div>
+    <div class="section" id="sec-prices"><div class="s-head" onclick="toggleSection('sec-prices')"><div class="s-icon" style="background:rgba(251,191,36,.1)">📈</div><div class="s-title">Commodity Prices</div><div class="s-meta" id="prices-meta">Pending</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="price-list" id="price-list">${priceHtml}</div></div></div></div>
+    <div class="section" id="sec-heat"><div class="s-head" onclick="toggleSection('sec-heat')"><div class="s-icon" style="background:rgba(192,132,252,.1)">🔥</div><div class="s-title">Industry Heatmap</div><div class="s-meta">${d.heatmap.length} regions</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="heat-legend"><div class="heat-lbl">LOW</div><div class="heat-grad"></div><div class="heat-lbl">HIGH</div></div><div class="heat-rows">${heatHtml}</div></div></div></div>`;
+
+            if (window._cachedShips) renderShipsSidebar(window._cachedShips);
+            if (window._cachedNewsHtml) {
+                var tempDiv = document.createElement('div');
+                tempDiv.className = 'section open';
+                tempDiv.id = 'sec-news';
+                tempDiv.innerHTML = '<div class="s-head"><div class="s-icon" style="background:rgba(56,189,248,.1)">📰</div><div class="s-title">Live News</div><div class="s-meta" style="color:var(--blue)">Latest</div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="news-list">' + window._cachedNewsHtml + '</div></div></div>';
+                sb.appendChild(tempDiv);
+                tempDiv.querySelector('.s-head').addEventListener('click', function () { tempDiv.classList.toggle('open'); });
+                tempDiv.querySelectorAll('.news-item').forEach(function (item) {
+                    item.addEventListener('click', function () {
+                        var link = this.dataset.link;
+                        if (link && link !== '#') window.open(link, '_blank');
+                    });
+                });
+            }
+            if (window._updateCommodityPrices) window._updateCommodityPrices();
+        }
+
+        function matchCompany(q) {
+            q = q.toLowerCase().trim();
+            if (q.includes('tata')) return 'tata';
+            if (q.includes('jsw')) return 'jsw';
+            if (q.includes('reliance') || q.includes('ril')) return 'reliance';
+            return null;
+        }
+
+        function toggleSection(id) { document.getElementById(id).classList.toggle('open'); }
+        function toggleRisk(card) { card.classList.toggle('expanded'); }
+        function scrollToRisk() { const el = document.getElementById('sec-risk'); el.classList.add('open'); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+        window.flyToMap = function (lat, lng, zoom) {
+            if (window.map) {
+                window.map.flyTo({ center: [lng, lat], zoom: zoom, duration: 1200 });
+            }
+        };
+
+        function toggleLayer(btn) {
+            const l = btn.dataset.l;
+            layerState[l] = !layerState[l];
+            btn.classList.toggle('on', layerState[l]);
+            if (window.map && window.map.isStyleLoaded()) {
+                if (l === 'routes') {
+                    if (map.getSource('routes')) map.setLayoutProperty('routes-layer', 'visibility', layerState.routes ? 'visible' : 'none');
+                }
+                if (l === 'heat') {
+                    if (map.getSource('heat')) map.setLayoutProperty('heat-layer', 'visibility', layerState.heat ? 'visible' : 'none');
+                }
+                if (l === 'risk') {
+                    document.querySelectorAll('.maplibregl-marker:not(.live-ship-marker)').forEach(mk => {
+                        mk.style.display = layerState.risk ? 'block' : 'none';
+                    });
+                }
+            }
+        }
+        window.toggleLayer = toggleLayer;
+
+        function renderMapFeatures(d) {
+            if (!window.map || !window.map.isStyleLoaded()) return;
+
+            activeMarkers.forEach(m => m.remove());
+            activeMarkers = [];
+
+            d.markers.forEach(m => {
+                var el = document.createElement('div');
+                var s = m.s || 34;
+                el.style.cssText = `width:${s}px;height:${s}px;cursor:pointer;`;
+                var inner = document.createElement('div');
+                inner.style.cssText = `width:100%;height:100%;background:${m.c}18;border:1.5px solid ${m.c};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${Math.round(s * .38)}px;box-shadow:0 0 14px ${m.c}55;transition:transform .2s;`;
+                inner.innerText = m.e;
+                el.appendChild(inner);
+                el.onmouseover = function () { inner.style.transform = 'scale(1.15)'; };
+                el.onmouseout = function () { inner.style.transform = 'scale(1)'; };
+                if (!layerState.risk) el.style.display = 'none';
+
+                let rows = m.rows.map(r => `<div class="popup-row"><span class="popup-key">${r[0]}</span><span class="popup-val">${r[1]}</span></div>`).join('');
+                let content = `<div class="popup-inner"><div class="popup-tag" style="background:${m.c}18;color:${m.c}">${m.e} ${m.tag}</div><div class="popup-title">${m.title}</div><div class="popup-rows">${rows}</div></div>`;
+
+                var marker = new maplibregl.Marker({ element: el })
+                    .setLngLat([m.ll[1], m.ll[0]])
+                    .setPopup(new maplibregl.Popup({ offset: s / 2 }).setHTML(content))
+                    .addTo(map);
+                activeMarkers.push(marker);
+            });
+
+            let routeFeatures = [];
+            d.routes.forEach(r => {
+                routeFeatures.push({
+                    "type": "Feature",
+                    "properties": { "color": r.style.color },
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": r.pts.map(p => [p[1], p[0]])
+                    }
+                });
+            });
+            let routesCollection = { "type": "FeatureCollection", "features": routeFeatures };
+
+            if (map.getSource('routes')) {
+                map.getSource('routes').setData(routesCollection);
+            } else {
+                map.addSource('routes', { type: 'geojson', data: routesCollection });
+                map.addLayer({
+                    'id': 'routes-layer',
+                    'type': 'line',
+                    'source': 'routes',
+                    'layout': {
+                        'line-join': 'round',
+                        'line-cap': 'round',
+                        'visibility': layerState.routes ? 'visible' : 'none'
+                    },
+                    'paint': {
+                        'line-color': ['get', 'color'],
+                        'line-width': 1.8,
+                        'line-dasharray': [10, 7]
+                    }
+                });
+            }
+
+            let heatFeatures = [];
+            d.heatCircles.forEach(h => {
+                heatFeatures.push({
+                    "type": "Feature",
+                    "properties": { "color": h.c, "name": h.n, "workforce": h.w },
+                    "geometry": { "type": "Point", "coordinates": [h.ll[1], h.ll[0]] }
+                });
+            });
+            let heatCollection = { "type": "FeatureCollection", "features": heatFeatures };
+            if (map.getSource('heat')) {
+                map.getSource('heat').setData(heatCollection);
+            } else {
+                map.addSource('heat', { type: 'geojson', data: heatCollection });
+                map.addLayer({
+                    'id': 'heat-layer',
+                    'type': 'circle',
+                    'source': 'heat',
+                    'layout': {
+                        'visibility': layerState.heat ? 'visible' : 'none'
+                    },
+                    'paint': {
+                        'circle-radius': 40,
+                        'circle-color': ['get', 'color'],
+                        'circle-opacity': 0.15,
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': ['get', 'color'],
+                        'circle-stroke-opacity': 0.4
+                    }
+                });
+
+                map.on('click', 'heat-layer', function (e) {
+                    var c = e.features[0].properties.color;
+                    var n = e.features[0].properties.name;
+                    var w = e.features[0].properties.workforce;
+                    var html = `<div class="popup-inner"><div class="popup-tag" style="background:${c}18;color:${c}">🔥 Industry Zone</div><div class="popup-title">${n}</div><div class="popup-rows"><div class="popup-row"><span class="popup-key">Workforce</span><span class="popup-val">${w}</span></div></div></div>`;
+                    new maplibregl.Popup()
+                        .setLngLat(e.lngLat)
+                        .setHTML(html)
+                        .addTo(map);
+                });
+                map.on('mouseenter', 'heat-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
+                map.on('mouseleave', 'heat-layer', () => { map.getCanvas().style.cursor = ''; });
+            }
+        }
+
+        function switchCompany(key) {
+            window.activeCompany = key;
+            const d = companies[key]; if (!d) return;
+            document.getElementById('cAvatar').innerHTML = d.avatar;
+            document.getElementById('cAvatar').style.background = d.avatarBg;
+            document.getElementById('cName').textContent = d.name;
+            document.getElementById('cExchange').textContent = d.exchange;
+            document.getElementById('searchInput').value = d.name;
+            d.kpis.forEach((k, i) => { document.getElementById('kv' + i).textContent = k.v; document.getElementById('kv' + i).style.color = k.c; document.getElementById('kl' + i).textContent = k.l; });
+            document.getElementById('healthVal').textContent = d.health.score;
+            document.getElementById('healthVal').style.color = d.health.color;
+            const hb = document.getElementById('healthBar'); hb.style.width = d.health.score + '%'; hb.style.animation = 'none'; hb.offsetHeight; hb.style.animation = 'bar-grow .8s ease .3s both';
+            document.getElementById('healthSub').textContent = d.health.sub;
+            document.querySelectorAll('.c-pill').forEach(p => p.classList.toggle('on', p.dataset.company === key));
+            renderSidebar(d);
+
+            if (window.map && window.map.isStyleLoaded()) {
+                renderMapFeatures(d);
+                map.flyTo({ center: [d.mapCenter[1], d.mapCenter[0]], zoom: d.mapZoom, duration: 1200 });
+            }
+        }
+
+        var WB = [
+            { emoji: '🪨', name: 'Iron Ore', url: 'https://api.worldbank.org/v2/en/indicator/PIORECR.MT?format=json&mrv=1&per_page=1', fallback: 118.4, unit: '/MT' },
+            { emoji: '🖤', name: 'Coal AUS', url: 'https://api.worldbank.org/v2/en/indicator/PCOALAU.MT?format=json&mrv=1&per_page=1', fallback: 245.0, unit: '/MT' },
+            { emoji: '🛢️', name: 'Brent Crude', url: 'https://api.worldbank.org/v2/en/indicator/POILBRE.USD?format=json&mrv=1&per_page=1', fallback: 82.4, unit: '/bbl' },
+            { emoji: '🔥', name: 'Nat Gas', url: 'https://api.worldbank.org/v2/en/indicator/PNGASUS.USD?format=json&mrv=1&per_page=1', fallback: 9.8, unit: '/mmBtu' }
+        ];
+
+        function renderPrices(results) {
+            var pl = document.getElementById('price-list');
+            if (!pl) return;
+            pl.innerHTML = results.map(function (r) {
+                var chg = ((Math.random() - 0.45) * 4).toFixed(1);
+                var up = parseFloat(chg) > 0;
+                return '<div class="price-row">' +
+                    '<div class="p-name">' + r.c.emoji + ' ' + r.c.name + '</div>' +
+                    '<div class="p-right">' +
+                    '<div class="p-val">$' + r.val + r.c.unit + '</div>' +
+                    '<div class="p-chg ' + (up ? 'up' : 'dn') + '">' + (up ? '▲' : '▼') + ' ' + Math.abs(chg) + '%</div>' +
+                    '</div></div>';
+            }).join('');
+        }
+
+        function loadPrices() {
+            var pl = document.getElementById('price-list');
+            if (!pl) return;
+            renderPrices(WB.map(function (c) { return { c: c, val: c.fallback }; }));
+            Promise.all(WB.map(function (c) {
+                return fetch(c.url)
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        var v = d[1] && d[1][0] && d[1][0].value;
+                        return { c: c, val: v ? parseFloat(v).toFixed(1) : c.fallback };
+                    })
+                    .catch(function () { return { c: c, val: c.fallback }; });
+            })).then(function (results) {
+                renderPrices(results);
+                var pm = document.getElementById('prices-meta');
+                if (pm) pm.textContent = 'Live ✓';
+            });
+        }
+        window._updateCommodityPrices = loadPrices;
+
+        window.activeShipMarkers = [];
+        window.updateGlobalData = function () {
+            var stat = document.getElementById('lastUpdated');
+            if (stat) stat.textContent = 'Updating...';
+            loadPrices();
+
+            fetch(window.CHAINSCOPE_CONFIG.SHIP_WORKER_URL)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (window.activeShipMarkers) {
+                        window.activeShipMarkers.forEach(m => m.remove());
+                    }
+                    window.activeShipMarkers = [];
+                    var ships = data.ships || data.data || [];
+                    if (Array.isArray(data)) ships = data;
+                    ships.forEach(function (s) {
+                        if (!s.lat || !s.lon) return;
+                        var el = document.createElement('div');
+                        el.className = 'live-ship-marker';
+                        el.style.cssText = 'width:10px;height:10px;background:#34d399;border:1.5px solid #34d399;border-radius:50%;box-shadow:0 0 8px #34d39988;cursor:pointer;';
+                        var m = new maplibregl.Marker({ element: el })
+                            .setLngLat([s.lon, s.lat])
+                            .setPopup(new maplibregl.Popup({ offset: 14 }).setHTML(
+                                '<div class="popup-inner"><div class="popup-title"><b style="color:#34d399">🚢 ' + (s.name || s.SHIPNAME || 'Ship') + '</b></div>' +
+                                '<div class="popup-rows"><div class="popup-row"><span class="popup-key">Speed</span><span class="popup-val">' + (s.speed || s.SPEED || 0) + ' kn</span></div>' +
+                                '<div class="popup-row"><span class="popup-key">Destination</span><span class="popup-val">' + (s.dest || s.DESTINATION || 'Unknown') + '</span></div></div></div>'
+                            ));
+                        if (window.map) {
+                            m.addTo(map);
+                            window.activeShipMarkers.push(m);
+                        }
+                    });
+                    renderShipsSidebar(ships);
+                    if (stat) {
+                        var d = new Date();
+                        stat.textContent = 'Last updated: ' + d.toLocaleTimeString();
+                    }
+                })
+                .catch(function () { if (stat) stat.textContent = 'Update failed'; });
+        };
+
+        function renderShipsSidebar(ships) {
+            window._cachedShips = ships;
+            var sbScroll = document.getElementById('sb-scroll');
+            var shipSection = document.getElementById('sec-ships');
+            if (shipSection) shipSection.remove();
+
+            var displayShips = ships.slice(0, 8);
+            var shipHtml = displayShips.map(function (s) {
+                var shipName = s.name || s.SHIPNAME || 'Unknown Vessel';
+                var shipType = s.type || s.SHIPTYPE || 'Cargo';
+                var speed = s.speed || s.SPEED || 0;
+                var lat = s.lat ? Number(s.lat).toFixed(1) : '?';
+                var lon = s.lon ? Number(s.lon).toFixed(1) : '?';
+                return '<div class="ship-item" data-lat="' + s.lat + '" data-lon="' + s.lon + '"><div class="ship-pip"></div><div class="ship-body"><div class="ship-name">' + shipName + '</div><div class="ship-detail">' + shipType + ' · ' + lat + '°, ' + lon + '°</div></div><div class="ship-right"><div class="ship-speed">' + speed + ' kn</div><div class="ship-status">● Live</div></div></div>';
+            }).join('');
+
+            var sectionEl = document.createElement('div');
+            sectionEl.className = 'section open';
+            sectionEl.id = 'sec-ships';
+            sectionEl.innerHTML = '<div class="s-head"><div class="s-icon" style="background:rgba(34,197,94,.12)">🚢</div><div class="s-title">Live Ships <span id="ships-meta" style="font-weight:normal;color:var(--green)"></span></div><div class="s-arrow">▼</div></div><div class="s-body"><div class="s-content"><div class="ship-list">' + shipHtml + '</div></div></div>';
+
+            var firstSection = sbScroll.querySelector('.section');
+            if (firstSection) sbScroll.insertBefore(sectionEl, firstSection);
+            else sbScroll.appendChild(sectionEl);
+
+            var sm = document.getElementById('ships-meta');
+            if (sm) sm.textContent = ships.length + ' Live';
+
+            sectionEl.querySelector('.s-head').addEventListener('click', function () { sectionEl.classList.toggle('open'); });
+            sectionEl.querySelectorAll('.ship-item').forEach(function (item) {
+                item.addEventListener('click', function () {
+                    var lat = parseFloat(this.dataset.lat);
+                    var lon = parseFloat(this.dataset.lon);
+                    if (!isNaN(lat) && !isNaN(lon) && window.map) {
+                        map.flyTo({ center: [lon, lat], zoom: 7, duration: 1200 });
+                    }
+                });
+            });
+        }
+
+        window.addEventListener('load', function () {
+            document.getElementById('analyseBtn').addEventListener('click', function () {
+                const key = matchCompany(document.getElementById('searchInput').value);
+                if (key) switchCompany(key);
+            });
+            document.getElementById('searchInput').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { const key = matchCompany(this.value); if (key) switchCompany(key); }
+            });
+            document.querySelectorAll('.c-pill').forEach(p => {
+                p.addEventListener('click', function () { switchCompany(this.dataset.company); });
+            });
+
+            document.getElementById('sb-toggle').addEventListener('click', function () {
+                var sb = document.querySelector('.sidebar');
+                var btn = document.getElementById('sb-toggle');
+                sb.classList.toggle('collapsed');
+                btn.textContent = sb.classList.contains('collapsed') ? '❮' : '❯';
+                setTimeout(function () { if (window.map) { map.resize(); } }, 310);
+            });
+
+            window.map = new maplibregl.Map({
+                container: 'map',
+                style: window.CHAINSCOPE_CONFIG.MAP_STYLE_URL,
+                center: [62, 18],
+                zoom: 3,
+                attributionControl: false
+            });
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+            map.on('load', function () {
+                if (window.activeCompany) {
+                    renderMapFeatures(companies[window.activeCompany]);
+                } else {
+                    switchCompany('tata');
+                }
+                window.updateGlobalData();
+                setInterval(window.updateGlobalData, 30000);
+            });
+
+            var newsKeywords = ['ship', 'cargo', 'supply', 'trade', 'sanctions', 'oil'];
+            var fallbackNews = [{ title: 'Global shipping costs surge amid Red Sea disruptions', link: '#' }, { title: 'EU sanctions on Russian oil reshape trade routes', link: '#' }];
+            fetch(window.CHAINSCOPE_CONFIG.NEWS_PROXY_URL + encodeURIComponent('https://feeds.bbci.co.uk/news/world/rss.xml'))
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    var xmlStr = data.contents || '';
+                    var parser = new DOMParser();
+                    var xml = parser.parseFromString(xmlStr, 'text/xml');
+                    var items = xml.querySelectorAll('item');
+                    var articles = [];
+                    items.forEach(function (item) {
+                        var title = item.querySelector('title') ? item.querySelector('title').textContent : '';
+                        var link = item.querySelector('link') ? item.querySelector('link').textContent : '#';
+                        if (newsKeywords.some(function (kw) { return title.toLowerCase().includes(kw); })) articles.push({ title: title, link: link });
+                    });
+                    if (articles.length === 0) articles = fallbackNews;
+                    window._cachedNewsHtml = articles.slice(0, 3).map(function (a) {
+                        var matched = newsKeywords.filter(function (kw) { return a.title.toLowerCase().includes(kw); });
+                        var tagHtml = matched.length > 0 ? '<span class="news-tag">' + matched[0] + '</span>' : '';
+                        return '<div class="news-item" data-link="' + (a.link || '#') + '"><div class="news-title">' + a.title + '</div><div class="news-meta"><span class="news-src">BBC</span>' + tagHtml + '</div></div>';
+                    }).join('');
+                }).catch(function () { });
+
+            if (!window.activeCompany) switchCompany('tata');
+        });
+    </script>
+</body>
+
+</html>
